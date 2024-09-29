@@ -1,78 +1,53 @@
 package entregadois;
 
-import java.util.LinkedList;
 import java.util.Queue;
+import java.util.LinkedList;
 
 public class Barbearia {
-    private final int numBarbeiros; //n de barbeiros
-    private final int numCadeirasEspera; //n de cadeiras
-    private final Queue<Cliente> filaEspera; //fila de espera
-    public final boolean[] cadeirasBarbeiro; // True se ocupada e False livre
-    public final Object lock = new Object(); // Monitor para sincronização
+    private final int numBarbeiros; // Número de barbeiros
+    private final Queue<Cliente> filaEspera; // Fila de espera dos clientes
+    private int cadeirasDisponiveis; // Número de cadeiras de espera disponíveis
+    private int clientesAtendidos = 0; // Contador de clientes atendidos
+    private final int totalClientes; // Número total de clientes a serem atendidos
 
-    public Barbearia(int numBarbeiros, int numCadeirasEspera) {
+    public Barbearia(int numBarbeiros, int numCadeirasEspera, int totalClientes) {
         this.numBarbeiros = numBarbeiros;
-        this.numCadeirasEspera = numCadeirasEspera;
+        this.cadeirasDisponiveis = numCadeirasEspera;
+        this.totalClientes = totalClientes;
         this.filaEspera = new LinkedList<>();
-        this.cadeirasBarbeiro = new boolean[numBarbeiros];
-        for (int i = 0; i < numBarbeiros; i++) {
-            cadeirasBarbeiro[i] = false;
+    }
+
+    public synchronized boolean cortaCabelo(Cliente cliente) {
+        if (clientesAtendidos >= totalClientes) {
+            return false; // Se já atendemos todos os clientes, não aceitar mais
+        }
+
+        if (cadeirasDisponiveis > 0) {
+            cadeirasDisponiveis--;  // Ocupa uma cadeira
+            filaEspera.add(cliente);
+            System.out.println("Cliente " + cliente.getId() + " esperando corte.");
+            notify();  // Notifica apenas um barbeiro
+            return true;
+        } else {
+            System.out.println("Cliente " + cliente.getId() + " tentou entrar na barbearia, mas está lotada.");
+            return false;
         }
     }
 
-    public boolean cortaCabelo(Cliente cliente) {
-        synchronized (lock) {
-            if (filaEspera.size() < numCadeirasEspera) {
-                filaEspera.add(cliente); //entra na fila de espera
-                System.out.println("Cliente " + cliente.getId() + " esperando corte.");
-                lock.notifyAll(); // Notifica os barbeiros que há um cliente esperando
-                return true;
-            } else {
-                System.out.println("Cliente " + cliente.getId() + " tentou entrar na barbearia, mas está lotada... indo dar uma voltinha."); //barbearia cheia
-                return false;
-            }
+    public synchronized Cliente proximoCliente() {
+        if (filaEspera.isEmpty()) {
+            return null; // Retorna null se não houver clientes na fila
         }
+        return filaEspera.poll(); // Retorna o próximo cliente da fila
     }
 
-    public Cliente proximoCliente() throws InterruptedException {
-        synchronized (lock) {
-            while (filaEspera.isEmpty()) {
-                System.out.println("Barbeiro esperando cliente...");
-                lock.wait(); // Espera até que um cliente chegue
-                System.out.println("Barbeiro acordou! Começando os trabalhos!");
-            }
-            return filaEspera.poll(); // Retorna o próximo cliente
-        }
-    }
+    public synchronized void corteTerminado(Cliente cliente) {
+        clientesAtendidos++; // Incrementa o número de clientes atendidos
+        cadeirasDisponiveis++;  // Libera uma cadeira de espera
+        System.out.println("Cliente " + cliente.getId() + " terminou o corte... saindo da barbearia!");
 
-    public void corteTerminado(Cliente cliente) {
-        synchronized (lock) {
-            System.out.println("Cliente " + cliente.getId() + " terminou o corte... saindo da barbearia!");
-            lock.notifyAll(); // Notifica os clientes e barbeiros
-        }
-    }
-
-    // Método auxiliar para alocar uma cadeira para o barbeiro de forma segura
-    public int alocarCadeira() throws InterruptedException {
-        synchronized (lock) {
-            while (true) {
-                for (int i = 0; i < cadeirasBarbeiro.length; i++) {
-                    if (!cadeirasBarbeiro[i]) {
-                        cadeirasBarbeiro[i] = true; // Marca a cadeira como ocupada
-                        return i;
-                    }
-                }
-                lock.wait(); // Espera até que uma cadeira seja liberada
-            }
-        }
-    }
-
-    // Método auxiliar para liberar a cadeira após o corte
-    public void liberarCadeira(int cadeira) {
-        synchronized (lock) {
-            cadeirasBarbeiro[cadeira] = false; // Libera a cadeira
-            lock.notifyAll(); // Notifica que uma cadeira foi liberada
+        if (!filaEspera.isEmpty()) {
+            notify();  // Notifica um barbeiro apenas se houver clientes esperando
         }
     }
 }
-

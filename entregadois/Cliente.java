@@ -2,34 +2,41 @@ package entregadois;
 
 import java.util.Random;
 
-public class Cliente implements Runnable {
-    private static int idCounter = 1; //contador que gera id
-    private final int id; // id
-    private final Barbearia barbearia; // barbearia que ele vai
+public class Cliente extends Pessoa implements Runnable {
+    private final Barbearia barbearia;
+    private static final int MAX_TENTATIVAS = 5;
 
-    public Cliente(Barbearia barbearia) { 
+    public Cliente(Barbearia barbearia) {
+        super(idCounter++); // Chama o construtor da superclasse Pessoa para gerar o ID
         this.barbearia = barbearia;
-        this.id = idCounter++; //id unico
-    }
-
-    public int getId() {
-        return id;
     }
 
     @Override
-    public void run() { //thread
-        Random random = new Random(); //tempo de espera aleatorio
-        while (true) {
+    public void run() {
+        Random random = new Random();
+        int tentativas = 0;
+
+        while (tentativas < MAX_TENTATIVAS) {
             try {
-                boolean atendido = barbearia.cortaCabelo(this);//tenta ser atendido
+                System.out.println("Cliente " + id + " tentando entrar na barbearia...");
+                boolean atendido = barbearia.cortaCabelo(this); // Tenta ser atendido
                 if (atendido) {
-                    Thread.sleep(random.nextInt(5000) + 3000); // Simula o tempo de espera após corte
+                    System.out.println("Cliente " + id + " sendo atendido.");
+                    Thread.sleep(random.nextInt(3000) + 3000); // Simula o tempo de espera após o corte
+                    break; // Sai do loop após ser atendido
                 } else {
-                    Thread.sleep(random.nextInt(5000) + 3000); // Simula o tempo de espera antes de tentar novamente
+                    System.out.println("Cliente " + id + " tentou entrar na barbearia, mas está lotada... indo dar uma voltinha.");
+                    Thread.sleep(random.nextInt(2000) + 3000); // Espera antes de tentar novamente
+                    tentativas++;
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                break; // Sai do loop em caso de interrupção
             }
+        }
+
+        if (tentativas == MAX_TENTATIVAS) {
+            System.out.println("Cliente " + id + " desistiu após " + MAX_TENTATIVAS + " tentativas.");
         }
     }
 }
