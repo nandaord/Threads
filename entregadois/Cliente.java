@@ -1,4 +1,3 @@
-package entregadois;
 
 import java.util.Random;
 

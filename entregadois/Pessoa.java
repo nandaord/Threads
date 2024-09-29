@@ -1,4 +1,3 @@
-package entregadois;
 
 public class Pessoa {
     protected static int idCounter = 1; // Contador global de IDs
